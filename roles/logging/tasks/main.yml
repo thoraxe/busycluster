@@ -107,6 +107,8 @@
 
 - name: wait for elasticsearch and logging crds
   shell: "oc get crd/{{ item }}"
+  register: crds_exist
+  until: item in crds_exist.stdout 
   retries: 10
   delay: 30
   with_items:
