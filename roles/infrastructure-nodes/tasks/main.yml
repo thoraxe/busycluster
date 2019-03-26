@@ -1,3 +1,5 @@
+# vim: set ft=ansible
+
 - name: register list of machinesets
   shell: "oc get machineset -n openshift-machine-api"
   register: infra_machineset_exists
@@ -13,4 +15,34 @@
 # move router (doesn't work yet)
 
 - name: move monitoring onto infra nodes
-  shell: "oc create -f https://raw.githubusercontent.com/openshift/training/master/assets/cluster-monitoring-configmap.yaml"
+  k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: cluster-monitoring-config
+        namespace: openshift-monitoring
+      data:
+        config.yaml: |+
+          alertmanagerMain:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+          prometheusK8s:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+          prometheusOperator:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+          grafana:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+          k8sPrometheusAdapter:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+          kubeStateMetrics:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
+          telemeterClient:
+            nodeSelector:
+              node-role.kubernetes.io/infra: ""
