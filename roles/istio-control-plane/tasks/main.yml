@@ -41,21 +41,21 @@
   when: 
     - system_project_exists.rc == 1
 
-- name: check for istio control plane CR
-  shell: "oc get installation.istio.openshift.com/istio-installation -n istio-operator"
-  register: istio_cr_exists
-  failed_when: istio_cr_exists.rc >= 2
+- name: istio control plane CR
+  k8s:
+    state: present
+    definition:
+      apiVersion: "istio.openshift.com/v1alpha1"
+      kind: "Installation"
+      metadata:
+        name: "istio-installation"
+        namespace: istio-operator
 
-- name: create istio control plane CR
-  shell: "oc create -f https://raw.githubusercontent.com/Maistra/openshift-ansible/maistra-0.7/istio/cr-minimal.yaml"
-  when:
-    - istio_cr_exists.rc == 1
-
-- name: wait up to 11 minutes for installer pod to be completed
+- name: wait up to 15 minutes for installer pod to be completed
   shell: "oc get `oc get pod -n istio-system -o name | grep ansible` -o jsonpath='{.status.phase}'"
   register: installer_pod_status
   until: installer_pod_status.stdout == "Succeeded"
-  retries: 10
+  retries: 15
   delay: 60
 
 - name: wait for the elasticsearch statefulset to exist
@@ -64,9 +64,6 @@
   until: elasticsearch_set_status.rc == 0
   retries: 5
   delay: 30
-
-- name: patch the elasticsearch statefulset to add the tuned label for the sysctl
-  shell: "oc patch statefulset elasticsearch -n istio-system -p '{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"tuned.openshift.io/elasticsearch\": \"\"}}}}}'"
 
 # nuclear option which is easier than trying to find the current elasticsearch pod
 - name: delete all control plane pods to force redeploy
